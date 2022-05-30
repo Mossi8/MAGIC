@@ -58,6 +58,9 @@ class MAGIC(BaseEstimator):
         n_pca < 20 allows neighborhoods to be calculated in
         roughly log(n_samples) time.
 
+    custom_latents: numpy.ndarray, optional, default: None.
+        If not None, this is used as the latent variables instead of PCA.
+
     solver : str, optional, default: 'exact'
         Which solver to use. "exact" uses the implementation described
         in van Dijk et al. (2018) [1]_. "approximate" uses a faster implementation
@@ -143,6 +146,7 @@ class MAGIC(BaseEstimator):
         n_jobs=1,
         random_state=None,
         verbose=1,
+        custom_latents=None,
     ):
         self.knn = knn
         self.knn_max = knn_max
@@ -156,6 +160,7 @@ class MAGIC(BaseEstimator):
         self.graph = None
         self.X = None
         self.X_magic = None
+        self.custom_latents = custom_latents
         self._check_params()
         self.verbose = verbose
         _logger.set_level(verbose)
@@ -595,8 +600,12 @@ class MAGIC(BaseEstimator):
 
         # return selected genes
         if isinstance(genes, str) and genes == "pca_only":
-            X_magic = PCA().fit_transform(X_magic)
-            genes = ["PC{}".format(i + 1) for i in range(X_magic.shape[1])]
+            if type(self.custom_latents) ==None:
+                X_magic = PCA().fit_transform(X_magic)
+                genes = ["PC{}".format(i + 1) for i in range(X_magic.shape[1])]
+            else:
+                X_magic = self.custom_latents
+                genes = ["CL{}".format(i + 1) for i in range(X_magic.shape[1])]
         elif solver == "approximate":
             X_magic = data.inverse_transform(X_magic, columns=genes)
         elif genes is not None and len(genes) != X_magic.shape[1]:
